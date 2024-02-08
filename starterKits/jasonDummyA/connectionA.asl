@@ -1,1073 +1,192 @@
 // Agent bob in project MAPC2018.mas2j
 /* Initial beliefs and rules */
+random_Direction(DirectionList,RandomNumber,Direction) :- (RandomNumber <= 0.25 & .nth(0,DirectionList,Direction)) | (RandomNumber <= 0.5 & .nth(1,DirectionList,Direction)) | (RandomNumber <= 0.75 & .nth(2,DirectionList,Direction)) | (.nth(3,DirectionList,Direction)).
 
-//初始化代理
-//代理位置
-agent_location(0,0,0).
-//代理模式
-agent_mode(exploration).
-//
-dispenser_queue([500]).
-goal_queue([500]).
+escape_interval(70).
+escape_step(4).
+init_step(30).
+init_dirs([n,w, n,e, s,w, s,e, w,e]).
 
-//方向定义
-ava_dir(e).
-ava_dir(s).
-ava_dir(w).
-ava_dir(n).
-get_ava_dir(Dir) :- (ava_dir(e) & Dir = e)|(ava_dir(s) & Dir = s)|(ava_dir(w) & Dir = w)|(ava_dir(n) & Dir = n).
+my_id(-1).
 
-//方向获取
-// get_dir(X,Y,Dir):-X=1 & Y=0 & Dir =e .
-// get_dir(X,Y,Dir):-X=-1 & Y=0 & Dir =w .
-// get_dir(X,Y,Dir):-X=0 & Y=1 & Dir =s .
-// get_dir(X,Y,Dir):-X=0 & Y=-1 & Dir =n.
-// get_dir(X,Y,Dir):-(X > 1 | X < -1 )& (Y >1 | Y< -1) & Dir =e .
+/* helper functions */
+ids([1, 2, 3, 4, 5]).
+name2id(Name, Id) :- 
+	(.substring("1", Name) & Id = 1) | 
+	(.substring("2", Name) & Id = 2) | 
+	(.substring("3", Name) & Id = 3) | 
+	(.substring("4", Name) & Id = 4) | 
+	(.substring("5", Name) & Id = 5) |
+	(.print("Error: unknown name", Name) & Id = -1).
 
-get_dir(0,-1,Dir) :- Dir = n.
-get_dir(0,1,Dir) :- Dir = s.
-get_dir(1,0,Dir) :- Dir = e.
-get_dir(-1,0,Dir) :- Dir = w.
-get_dir(X,Y,e) :- (X > 1 | X < -1) & (Y > 1 | Y < -1).
-
-// get_dir_on(X,Y,Dir):-(X=1 & Y=0 & Dir =e ).
-// get_dir_on(X,Y,Dir):-(X=-1 & Y=0 & Dir =w ).
-// get_dir_on(X,Y,Dir):-(X=0 & Y=1 & Dir =s ).
-// get_dir_on(X,Y,Dir):-(X=0 & Y=-1 & Dir =n ).
-// get_dir_on(X,Y,Dir):-((X > 1 | X < -1 )& (Y >1 | Y< -1) & Dir =null ).
-
-
-
-
-get_dir_on(0,-1,Dir) :- Dir = s.
-get_dir_on(0,1,Dir) :- Dir = n.
-get_dir_on(1,0,Dir) :- Dir = w.
-get_dir_on(-1,0,Dir) :- Dir = e.
-get_dir_on(X,Y,null) :- (X > 1 | X < -1) & (Y > 1 | Y < -1).
-
-//方向检查
-// check_dir(X,Y,w) :- X < -1.
-// check_dir(X,Y,e) :- X > 1.
-// check_dir(-1,Y,n) :- Y < 0.
-// check_dir(-1,Y,s) :- Y > 0.
-// check_dir(1,Y,s) :- Y > 0.
-// check_dir(1,Y,n) :- Y < 0.
-// check_dir(0,Y,n) :- Y < -1.
-// check_dir(0,Y,s) :- Y > 1.
-// check_dir(0,1,Dir) :- Dir = null.
-// check_dir(0,-1,Dir) :- Dir = null.
-// check_dir(1,0,Dir) :- Dir = null.
-// check_dir(-1,0,Dir) :- Dir = null.
-
-check_dir(X,Y,Dir):- (Dir = e& X> 1).
-check_dir(X,Y,Dir):- (Dir = w& X< -1).
-check_dir(X,Y,Dir):- (Dir = s& Y> 1).
-check_dir(X,Y,Dir):- (Dir = n& Y< -1).
-check_dir(X,Y,Dir):- (Dir = e& X>0 & Y=1).
-check_dir(X,Y,Dir):- (Dir = w& X<0 & Y=1).
-check_dir(X,Y,Dir):- (Dir = e& X>0 & Y=-1).
-check_dir(X,Y,Dir):- (Dir = w& X<0 & Y=-1). 
-check_dir(X,Y,Dir):- (Dir = s& X=1 & Y>0).
-check_dir(X,Y,Dir):- (Dir = n& X=1 & Y<0).
-check_dir(X,Y,Dir):- (Dir = s& X=-1 & Y>0).
-check_dir(X,Y,Dir):- (Dir = s& X=-1& Y<0).
-check_dir(X,Y,Dir):- (Dir = e& X>1 &Y=0).
-check_dir(X,Y,Dir):- (Dir = w& X< -1 &Y=0).
-check_dir(X,Y,Dir):- (Dir = s& X=0 &Y>1).
-check_dir(X,Y,Dir):- (Dir = n& X=0 &Y< -1).
-
-// check_dir(0,1,Dir) :- Dir = null.
-// check_dir(0,-1,Dir) :- Dir = null.
-// check_dir(1,0,Dir) :- Dir = null.
-// check_dir(-1,0,Dir) :- Dir = null.
-
-check_dir(X,Y,Dir):- (Dir = null & X=0&Y=1).
-check_dir(X,Y,Dir):- (Dir = null & X=0&Y=-1).
-check_dir(X,Y,Dir):- (Dir = null & X=1&Y=0).
-check_dir(X,Y,Dir):- (Dir = null & X=-1&Y=0).
-
-
-
-check_dir_on(X,Y,Dir) :- (Dir=w & X < 0).
-check_dir_on(X,Y,Dir) :- (Dir=e & X > 0).
-check_dir_on(X,Y,Dir) :- (Dir=n & Y < 0).
-check_dir_on(X,Y,Dir) :- (Dir=s & Y > 0).
-check_dir_on(X,Y,Dir) :- (Dir=w & X < 0 & Y=0).
-check_dir_on(X,Y,Dir) :- (Dir=e & X > 0 & Y=0).
-check_dir_on(X,Y,Dir) :- (X=0 & Y < 0 & Dir=n).
-check_dir_on(X,Y,Dir) :- (X=0 & Y > 0 & Dir=s).
-check_dir_on(X,Y,Dir) :- (X=0 & Dir = null & Y=0).
-
-
-
-// check_dir_on(X,Y,w) :- X < 0.
-// check_dir_on(X,Y,e) :- X > 0.
-// check_dir_on(0,Y,n) :- Y < 0.
-// check_dir_on(0,Y,s) :- Y > 0.
-// check_dir_on(0,0,Dir) :- Dir = null.
-
-
-
-//方向转变
-// rotate_dir(n,e,RDir) :- RDir = ccw.
-// rotate_dir(n,w,RDir) :- RDir = cw.
-// rotate_dir(e,s,RDir) :- RDir = ccw.
-// rotate_dir(e,n,RDir) :- RDir = cw.
-// rotate_dir(s,w,RDir) :- RDir = ccw.
-// rotate_dir(s,e,RDir) :- RDir = cw.
-// rotate_dir(w,n,RDir) :- RDir = ccw.
-// rotate_dir(w,s,RDir) :- RDir = cw.
-
-
-
-// rotate_dir(n,s,RDir) :- RDir = ccw.
-// rotate_dir(e,w,RDir) :- RDir = ccw.
-// rotate_dir(s,n,RDir) :- RDir = ccw.
-// rotate_dir(w,e,RDir) :- RDir = ccw.
-
-
-// rotate_dir(n,n,RDir) :- RDir = null.
-// rotate_dir(e,e,RDir) :- RDir = null.
-// rotate_dir(s,s,RDir) :- RDir = null.
-// rotate_dir(w,w,RDir) :- RDir = null.
-
-
-
-
-rotate_dir(CurrentDir,NewDir,Dir_R):-(CurrentDir =n & NewDir =e & Dir_R =ccw ).
-rotate_dir(CurrentDir,NewDir,Dir_R):-(CurrentDir =e & NewDir =s & Dir_R =ccw ).
-rotate_dir(CurrentDir,NewDir,Dir_R):-(CurrentDir =s & NewDir =w & Dir_R =ccw ).
-rotate_dir(CurrentDir,NewDir,Dir_R):-(CurrentDir =w & NewDir =n & Dir_R =ccw ).
-rotate_dir(CurrentDir,NewDir,Dir_R):-(CurrentDir =n & NewDir =w & Dir_R =cw ).
-rotate_dir(CurrentDir,NewDir,Dir_R):-(CurrentDir =w & NewDir =s & Dir_R =cw ).
-rotate_dir(CurrentDir,NewDir,Dir_R):-(CurrentDir =s & NewDir =e & Dir_R =cw ).
-rotate_dir(CurrentDir,NewDir,Dir_R):-(CurrentDir =e & NewDir =n & Dir_R =cw ).
-rotate_dir(CurrentDir,NewDir,Dir_R):-(CurrentDir =n & NewDir =n & Dir_R =null ).
-rotate_dir(CurrentDir,NewDir,Dir_R):-(CurrentDir =e & NewDir =e & Dir_R =null ).
-rotate_dir(CurrentDir,NewDir,Dir_R):-(CurrentDir =s & NewDir =s & Dir_R =null ).
-rotate_dir(CurrentDir,NewDir,Dir_R):-(CurrentDir =w & NewDir =w & Dir_R =null ).
-rotate_dir(CurrentDir,NewDir,Dir_R):-(CurrentDir =e & NewDir =w & Dir_R =ccw ).
-rotate_dir(CurrentDir,NewDir,Dir_R):-(CurrentDir =w & NewDir =e & Dir_R =ccw ).
-rotate_dir(CurrentDir,NewDir,Dir_R):-(CurrentDir =n & NewDir =s & Dir_R =ccw ).
-rotate_dir(CurrentDir,NewDir,Dir_R):-(CurrentDir =s & NewDir =n & Dir_R =ccw ).
-
-
-
-
-
-// rotate_dir(n,e,RDir) :- RDir = cw.
-// rotate_dir(n,w,RDir) :- RDir = ccw.
-// rotate_dir(e,s,RDir) :- RDir = cw.
-// rotate_dir(e,n,RDir) :- RDir = ccw.
-// rotate_dir(s,w,RDir) :- RDir = cw.
-// rotate_dir(s,e,RDir) :- RDir = ccw.
-// rotate_dir(w,n,RDir) :- RDir = cw.
-// rotate_dir(w,s,RDir) :- RDir = ccw.
-
-
-
-get_req_type(Req,X,Y,Btype) :- .member(req(X,Y,Btype),Req).
-
-count_location(B,N) :- .count(location(B,_,_,_),N).
-
-count_block(Btype,N) :- .count(block(_,Btype),N).
-count_block_all(N) :- .count(block(_,_),N).
-
-test_block(Btype,X,Y,N) :- .count(location(block,Btype,X,Y),N).
-
-random_dir(DirList,RandomNumber,Dir) :- (RandomNumber <= 0.25 & .nth(0,DirList,Dir)) | (RandomNumber <= 0.5 & .nth(1,DirList,Dir)) | (RandomNumber <= 0.75 & .nth(2,DirList,Dir)) | (.nth(3,DirList,Dir)).
-
-// update_dir(w,cw,Dir2) :- Dir2 = n.
-// update_dir(n,cw,Dir2) :- Dir2 = e.
-// update_dir(e,cw,Dir2) :- Dir2 = s.
-// update_dir(s,cw,Dir2) :- Dir2 = w.
-// update_dir(w,ccw,Dir2) :- Dir2 = s.
-// update_dir(n,ccw,Dir2) :- Dir2 = w.
-// update_dir(e,ccw,Dir2) :- Dir2 = n.
-// update_dir(s,ccw,Dir2) :- Dir2 = e.
-
-// update_dir(CurrentDir, Dir_R, NewDir):-(CurrentDir=e & Dir_R =cw & NewDir =s ).
-// update_dir(CurrentDir, Dir_R, NewDir):-(CurrentDir=w & Dir_R =cw & NewDir =n ).
-// update_dir(CurrentDir, Dir_R, NewDir):-(CurrentDir=n & Dir_R =cw & NewDir =e ).
-// update_dir(CurrentDir, Dir_R, NewDir):-(CurrentDir=s & Dir_R =cw & NewDir =w ).
-// update_dir(CurrentDir, Dir_R, NewDir):-(CurrentDir=e & Dir_R =ccw & NewDir =n ).
-// update_dir(CurrentDir, Dir_R, NewDir):-(CurrentDir=w & Dir_R =ccw & NewDir =s ).
-// update_dir(CurrentDir, Dir_R, NewDir):-(CurrentDir=n & Dir_R =ccw & NewDir =w ).
-// update_dir(CurrentDir, Dir_R, NewDir):-(CurrentDir=s & Dir_R =ccw & NewDir =e ).
-
-
-
-
-
-get_random_pointX(RandomNumber,X) :- (RandomNumber <= 0.16 & X = 0) | (RandomNumber <= 0.32 & X = 1) | (RandomNumber <= 0.48 & X=2) | (RandomNumber <= 0.64 & X=3) | (RandomNumber <= 0.80 & X=4) | (RandomNumber <= 1 & X=5).
-get_random_pointY(R1,R2,X1,X,Y) :- (R1 <= 0.5 & R2 <= 0.5 & X = X1*-1 & Y = (5-X1)*-1) | (R1 <= 0.5 & R2 > 0.5 & X = X1 & Y = (5-X1)*-1) | (R1 > 0.5 & R2 <= 0.5 & X = X1*-1 & Y = 5-X1) |(R1 > 0.5 & R2 > 0.5 & X = X1 & Y = 5-X1).
-
-inspect_dispenser(R1,X,Y,TX,TY) :- (RandomNumber <= 0.5 & TX = X -1 & TY = Y) | (RandomNumber <= 1 & TX = X & TY = Y-1).
-
-get_next_dispenser(Dtype,X,Y) :-  dispenser_queue(DQ) & .min(DQ,DSeq) & location(dispenser,Dtype,X,Y).  
-get_next_goal(X,Y) :-  dispenser_queue(GQ) & .min(GQ,GSeq) & location(goal,_,X,Y,_).  
 /* Initial goals */
 
-!start.                
+!start.
 
 /* Plans */
 
-+!start : .random(R1) & get_random_pointX(R1,X) & .random(R2) & get_random_pointX(R2,Y)<- 
-	.my_name(N);
-	+agent_name(N);
-	.all_names(L);
-	+agent_list(L);
-	.time(H,M,S,MS); 	.print("[",H,":",M,":",S,":",MS,"] ","agent name is ",N);
-	.print("[",H,":",M,":",S,":",MS,"] ","hello massim world.");
-	+random_point(X,Y);
-	.
-	
-+step(S): task_base(N, S, R,TX,TY,B) <-
-	-task_base(N, S, R,TX,TY,B);
++!start : .my_name(N) & name2id(N, ID) <- 
+	-+my_id(ID);
+	.print("hello massim world. ID=", ID).
+
++step(X) : my_id(ID) & init_step(IS) & (X <= IS) & init_dirs(Dirs) & .nth((ID-1)*2, Dirs, D1) & .nth((ID-1)*2+1, Dirs, D2) & .nth(X mod 2, [D1, D2], Dir) <-
+	move(Dir).
+
++step(X) : my_id(ID) & escape_interval(EI) & escape_step(ES) & ((ES*ID) <= (X mod EI) & (X mod EI) < (ES*(ID+1))) <-
+	.print("Escaping!!! step=", X);
+	!move_random.
+
++step(X) : lastFailed(Steps) <-
+	.print("Error handling...", Steps);
+	-lastFailed(Steps);
+	if(Steps > 1) {
+		+lastFailed(Steps-1);
+	};
+	!move_random.
+
+// Handle submit
++step(X) : attached(Block_x, Block_y) & goal(0,0) & task(TASK,_,_,[req(Block_x, Block_y, Block_type)]) <-  
+	.print("Block attached at ", Block_x, ", ", Block_y, ", moving to goal.");
+    submit(TASK).
+
+/* Error Handling */
++lastAction(Action) : lastActionResult(Result) & (Result \== success) <-
+	.print("@@@@@@@@@@@@@@Action ", Action, " failed! Result: ", Result);
+	+lastFailed(2);
 	.
 
-// agent explore the world
-+actionID(ID) : true<- 
-	!action_pipe;
-	.
++step(X) : blockattached(Block_x, Block_y, _) & not goal(Goal_x, Goal_y) <-
+	.print("Block attached at ", Block_x, ", ", Block_y, ", moving to goal.");
+    !move_random.
 
-// agent finds goal position
-+!action_pipe : get_next_goal(GoalX,GoalY) & agent_mode(find_goal) & current_task(N, D, R,TX,TY, Req) <- 
-	.time(H,M,S,MS); 	.print("[",H,":",M,":",S,":",MS,"] ","current mode find_goal");
-	!move_on(GoalX,GoalY);	
-	.
+// Handle rotation
++step(X) : attached(Block_x, Block_y) & goal(0,0) <-
+	.print("Block attached at ", Block_x, ", ", Block_y, ", rotating to goal.");
+    if(Block_x == 1){
+        rotate(cw);
+	} elif (Block_y == -1){
+		rotate(ccw);
+	} elif (Block_x == -1){
+		rotate(ccw);
+	} else {
+		!move_random;
+	}.
 
-+!action_pipe : agent_mode(exploration)<- 
-	!explore;
-	.
+// Move to goal
++step(X) : attached(Block_x, Block_y)  & goal(0, Goal_y) & not goal(0,0)<-
+	.print("Block attached at ", 0, ", ", Block_y, ", moving to goal.");
+	if(Goal_y < 0){
+		move(n);
+	} elif(Goal_y > 0){
+		move(s);
+	} else {
+		!move_random;
+	}.
 
-// the agent fetches a block
-+!action_pipe : stock(Btype,X,Y) &  agent_mode(find_blocks) <-
-	.time(H,M,S,MS);
-	//.print("[",H,":",M,":",S,":",MS,"] ","stock abs ================",X,",",Y);
-	//.print("[",H,":",M,":",S,":",MS,"] ","stock rel ================",X2,",",Y2);
-	.print("[",H,":",M,":",S,":",MS,"] ","current mode find_blocks");
-	!find_blocks(Btype,X,Y);
-	.
++step(X) : attached(Block_x, Block_y)  & goal(Goal_x, 0) & not goal(0,0)<-
+	.print("Block attached at ", Block_x, ", ", 0, ", moving to goal.");
+	if(Goal_x < 0){
+		move(w);
+	} elif(Goal_x > 0){
+		move(e);
+	} else {
+		!move_random;
+	}.
 
++step(X) : attached(Block_x, Block_y)  & goal(Goal_x, Goal_y) & not goal(0,0)<-
+	.print("Block attached at ", Block_x, ", ", Block_y, ", moving to goal.");
+	if(Goal_x < 0){
+		move(w);
+	} elif(Goal_y < 0){
+		move(n);
+	} elif(Goal_x > 0){
+		move(e);
+	} elif(Goal_y > 0){
+		move(s);
+	} else {
+		!move_random;
+	}.
 
-+!explore: true <-
-	!move_random_point;
-	//!move_random;
-	.
-@move_random_point[atomic]
-+!move_random_point: random_point(RX,RY) & agent_location(MyN,MyX,MyY)  & check_dir_on(RX-MyX,RY-MyY,Dir) & .random(R1) & .random(R2) & .random(R3) & get_random_pointX(R1,X1) & get_random_pointY(R2,R3,X1,X,Y) & .count(block(_,_),N)<-
-	.time(H,M,S,MS); 	
-	.print("[",H,":",M,":",S,":",MS,"] ","agent move_random_point Dir=",Dir,",RX=",RX,",RY=",RY,",N=",N);
-	//.print("[",H,":",M,":",S,":",MS,"] ","agent move_random_point Dir=",Dir,",MyX=",MyX,",MyY=",MyY);
-	//.print("[",H,":",M,":",S,":",MS,"] ","agent move_random_point Dir=",Dir,",RX-MyX=",RX-MyX,",RY-MyY=",RY-MyY);
-	if (Dir == null){
-		-+random_point(X+MyX,Y+MyY);
-		!move_random_point;
-		//skip;
-	}else{
-		if(Dir == n){
-			-+agent_location(9,MyX,MyY-1);
-		}elif(Dir == e){
-			-+agent_location(10,MyX+1,MyY);
-		}elif(Dir == s){
-			-+agent_location(11,MyX,MyY+1);
-		}elif(Dir == w){
-			-+agent_location(12,(MyX-1),MyY);
-		};
-		move(Dir);
-	};
-	.
-@move_random_point2[atomic]
-+!move_random_point: location(goal,_,GoalX,GoalY,_) & agent_location(MyN,MyX,MyY) & task_base(N, D, R,TX,TY,B) & block(Bdir,B) & not current_task(_,_,_,_,_,_) & not conflict_task(N)<-
-	.time(H,M,S,MS); 	.print("[",H,":",M,":",S,":",MS,"] ","the agent receive a new task ",N,",D=", D,",R=", R,",B=", B,",X=", TX,",Y=",TY);
-	.broadcast(tell,conflict_task(N));
-	-task_base(N, D, R,TX,TY,B);
-	+current_task(N, D, R,TX,TY, B);
-	-+agent_mode(find_goal);
-	.print("[",H,":",M,":",S,":",MS,"] ","5--------------------------- agent start task=",N);
-	.
-	
-@plan[atomic] 
-+!move_random : .random(RandomNumber) & random_dir([n,s,e,w] ,RandomNumber,Dir) & agent_location(MyN,MyX,MyY)<-
-	if(Dir == n){
-		-+agent_location(1,MyX,(MyY-1));
-	}elif(Dir == e){
-		-+agent_location(2,(MyX+1),MyY);
-	}elif(Dir == s){
-		-+agent_location(3,MyX,(MyY+1)); 
-	}elif(Dir == w){
-		-+agent_location(4,(MyX-1),MyY);
-	};
-	move(Dir);
-	.time(H,M,S,MS); 	.print("[",H,":",M,":",S,":",MS,"] ","agent move random:",Dir);
-	.
+// Handle attach
++step(X) : thing(0,1,block,Block_type) <-
+	attach(s);
+	+blockattached(0,1,Block_type).
++step(X) : thing(0,-1,block,Block_type)<-
+	attach(n);
+	+blockattached(0,-1,Block_type).
++step(X) : thing(1,0,block,Block_type)<-
+	attach(e);
+	+blockattached(1,0,Block_type).
++step(X) : thing(-1,0,block,Block_type)<-
+	attach(w);
+	+blockattached(-1,0,Block_type).
 
-// the agent finds a block given a block type
-+!find_blocks(Btype,X,Y) : true <-
-	!find_dispensers(Btype,X,Y);
-	.
-
-+!check_direction(X,Y,Btype) : agent_location(MyN,MyX,MyY) & get_dir(X-MyX,Y-MyY,Dir1) & ava_dir(Dir1)<-
-	.time(H,M,S,MS);
-	.print("[",H,":",M,":",S,":",MS,"] ","the agent check_direction Dir1=:",Dir1,",MyX=",MyX,",MyY=",MyY);
-	.print("[",H,":",M,":",S,":",MS,"] ","the agent check_direction Dir1:",Dir1,",X=",X,",Y=",Y);
-	.print("[",H,":",M,":",S,":",MS,"] ","the agent check_direction Dir1=:",Dir1,",",(X-MyX),",",(Y-MyY));
-	!request_block(X,Y,Btype);
-	.
-@check_direction[atomic]
-+!check_direction(X,Y,Btype) :  agent_location(MyN,MyX,MyY) & get_dir(X-MyX,Y-MyY,Dir1) & get_ava_dir(Dir2) & rotate_dir(Dir1,Dir2,RDir) & not Dir1 == Dir2 <-
-	.time(H,M,S,MS); 	.print("[",H,":",M,":",S,":",MS,"] ","agent rotate Dir1=",Dir1,",Dir2=",Dir2,",RDir=",RDir,",X=",X,",Y=",Y);
-	!update_block_dir(RDir);
-	!update_ava_dir(RDir);
-	rotate(RDir);
-	.
+// Handle request
++step(X) : thing(0,1,dispenser,_) <-
+ 	request(s).
++step(X) : thing(0,-1,dispenser,_) <-
+ 	request(n).
++step(X) : thing(1,0,dispenser,_) <-
+ 	request(e).
++step(X) : thing(-1,0,dispenser,_) <-
+	request(w).
 
 
-@rotate_direction1[atomic]
-+!rotate_direction(N, D, R,TX,TY,B) : get_dir_on(TX,TY,TargetDir) & block(CurrentDir,B) & not (TargetDir == CurrentDir) & rotate_dir(TargetDir,CurrentDir,RDir) <-
-	!update_block_dir(RDir);
-	!update_ava_dir(RDir);
-	rotate(RDir);
-	.time(H,M,S,MS); 	.print("[",H,":",M,":",S,":",MS,"] ","agent rotate TargetDir=",TargetDir,",CurrentDir=",CurrentDir,",RDir=",RDir,",X=",TX,",Y=",TY);
-	.
+// move to dispenser
++step(X) : thing(0, Dispenser_y, dispenser, D) <-
+	if(Dispenser_y < 0){
+        move(n);
+    } elif (Dispenser_y > 0){
+        move(s);
+    } else {
+		!move_random;
+	}.
++step(X) : thing(Dispenser_x, 0, dispenser, D) <- 
+    if(Dispenser_x < 0){
+        move(w);
+    } elif (Dispenser_x > 0){
+        move(e);
+    } else {
+		!move_random;
+	}.
++step(X) : thing(Dispenser_x, Dispenser_y, dispenser, D) <- 
+    if(Dispenser_x < 0){
+        move(w);
+    } elif (Dispenser_y < 0){
+        move(n);
+    } elif(Dispenser_x > 0){
+        move(e);
+    } elif(Dispenser_y > 0){
+        move(s);
+    } else {
+		!move_random;
+	}.
 
-@rotate_direction2[atomic]
-+!rotate_direction(N, D, R,TX,TY,B) : get_dir_on(TX,TY,TargetDir) & block(TargetDir,B) <-
-	-current_task(_, _, _,_,_, _);
-	-block(CurrentDir,B);
-	+ava_dir(CurrentDir);
-	submit(N);
-	-+agent_mode(exploration);
-	!stock;
-	.time(H,M,S,MS); 	.print("[",H,":",M,":",S,":",MS,"] ","agent submit the task=",N,",CurrentDir=",CurrentDir);
-	.
++step(X) : not thing(Dispenser_x, Dispenser_y ,dispenser,_) <-
+	!move_random_5.
 
-@update_block_dir1[atomic]
-+!update_block_dir(RDir) : block(n,B1) & block(e,B2) & block(s,B3) & block(w,B4)<-
-	if(RDir== cw){
-		-block(n,B1);
-		+block(e,B1);
-		-block(e,B2);
-		+block(s,B2);
-		-block(s,B3);
-		+block(w,B3);
-		-block(w,B4);
-		+block(n,B4);
-	}elif(RDir == ccw){
-		-block(n,B1);
-		+block(w,B1);
-		-block(w,B2);
-		+block(s,B2);
-		-block(s,B3);
-		+block(e,B3);
-		-block(e,B4);
-		+block(n,B4);
-	};
-	.
-@update_block_dir2[atomic]
-+!update_block_dir(RDir) : block(w,B4)<-
-	if(RDir== cw){
-		-block(w,B4);
-		+block(n,B4);
-	}elif(RDir == ccw){
-		-block(w,B2);
-		+block(s,B2);
-	};
-	.
-@update_block_dir3[atomic]
-+!update_block_dir(RDir) : block(s,B3) <-
-	if(RDir== cw){
-		-block(s,B3);
-		+block(w,B3);
-	}elif(RDir == ccw){
-		-block(s,B3);
-		+block(e,B3);
-	};
-	.
-@update_block_dir4[atomic]
-+!update_block_dir(RDir) : block(e,B2)<-
-	if(RDir== cw){
-		-block(e,B2);
-		+block(s,B2);
-	}elif(RDir == ccw){
-		-block(e,B4);
-		+block(n,B4);
-	};
-	.
-@update_block_dir5[atomic]
-+!update_block_dir(RDir) : block(n,B1)<-
-	if(RDir== cw){
-		-block(n,B1);
-		+block(e,B1);
-	}elif(RDir == ccw){
-		-block(n,B1);
-		+block(w,B1);
-	};
-	.
-@update_block_dir6[atomic]
-+!update_block_dir(RDir) : block(e,B2) & block(w,B4)<-
-	if(RDir== cw){
-		-block(e,B2);
-		+block(s,B2);
-		-block(w,B4);
-		+block(n,B4);
-	}elif(RDir == ccw){
-		-block(w,B2);
-		+block(s,B2);
-		-block(e,B4);
-		+block(n,B4);
-	};
-	.
-@update_block_dir7[atomic]
-+!update_block_dir(RDir) : block(n,B1) & block(s,B3)<-
-	if(RDir== cw){
-		-block(n,B1);
-		+block(e,B1);
-		-block(s,B3);
-		+block(w,B3);
-	}elif(RDir == ccw){
-		-block(n,B1);
-		+block(w,B1);
-		-block(s,B3);
-		+block(e,B3);
-	};
-	.
-@update_block_dir8[atomic]
-+!update_block_dir(RDir) : block(n,B1) & block(w,B4)<-
-	if(RDir== cw){
-		-block(n,B1);
-		+block(e,B1);
-		-block(w,B4);
-		+block(n,B4);
-	}elif(RDir == ccw){
-		-block(n,B1);
-		+block(w,B1);
-		-block(w,B2);
-		+block(s,B2);
-	};
-	.
-@update_block_dir9[atomic]
-+!update_block_dir(RDir) : block(s,B3) & block(w,B4)<-
-	if(RDir== cw){
-		-block(s,B3);
-		+block(w,B3);
-		-block(w,B4);
-		+block(n,B4);
-	}elif(RDir == ccw){
-		-block(w,B2);
-		+block(s,B2);
-		-block(s,B3);
-		+block(e,B3);
-	};
-	.
-@update_block_dir10[atomic]
-+!update_block_dir(RDir) : block(e,B2) & block(s,B3)<-
-	if(RDir== cw){
-		-block(e,B2);
-		+block(s,B2);
-		-block(s,B3);
-		+block(w,B3);
-	}elif(RDir == ccw){
-		-block(s,B3);
-		+block(e,B3);
-		-block(e,B4);
-		+block(n,B4);
-	};
-	.
-@update_block_dir11[atomic]
-+!update_block_dir(RDir) : block(n,B1) & block(e,B2)<-
-	if(RDir== cw){
-		-block(n,B1);
-		+block(e,B1);
-		-block(e,B2);
-		+block(s,B2);
-	}elif(RDir == ccw){
-		-block(n,B1);
-		+block(w,B1);
-		-block(e,B4);
-		+block(n,B4);
-	};
-	.
-@update_block_dir12[atomic]
-+!update_block_dir(RDir) : block(e,B2) & block(s,B3) & block(w,B4)<-
-	if(RDir== cw){
-		-block(e,B2);
-		+block(s,B2);
-		-block(s,B3);
-		+block(w,B3);
-		-block(w,B4);
-		+block(n,B4);
-	}elif(RDir == ccw){
-		-block(w,B2);
-		+block(s,B2);
-		-block(s,B3);
-		+block(e,B3);
-		-block(e,B4);
-		+block(n,B4);
-	};
-	.
-@update_block_dir13[atomic]
-+!update_block_dir(RDir) : block(n,B1) & block(s,B3) & block(w,B4)<-
-	if(RDir== cw){
-		-block(n,B1);
-		+block(e,B1);
-		-block(s,B3);
-		+block(w,B3);
-		-block(w,B4);
-		+block(n,B4);
-	}elif(RDir == ccw){
-		-block(n,B1);
-		+block(w,B1);
-		-block(w,B2);
-		+block(s,B2);
-		-block(s,B3);
-		+block(e,B3);
-	};
-	.
-@update_block_dir14[atomic]
-+!update_block_dir(RDir) : block(n,B1) & block(e,B2) & block(w,B4)<-
-	if(RDir== cw){
-		-block(n,B1);
-		+block(e,B1);
-		-block(e,B2);
-		+block(s,B2);
-		-block(w,B4);
-		+block(n,B4);
-	}elif(RDir == ccw){
-		-block(n,B1);
-		+block(w,B1);
-		-block(w,B2);
-		+block(s,B2);
-		-block(e,B4);
-		+block(n,B4);
-	};
-	.
-@update_block_dir15[atomic]
-+!update_block_dir(RDir) : block(n,B1) & block(e,B2) & block(s,B3) <-
-	if(RDir== cw){
-		-block(n,B1);
-		+block(e,B1);
-		-block(e,B2);
-		+block(s,B2);
-		-block(s,B3);
-		+block(w,B3);
-	}elif(RDir == ccw){
-		-block(n,B1);
-		+block(w,B1);
-		-block(s,B3);
-		+block(e,B3);
-		-block(e,B4);
-		+block(n,B4);
-	};
-	.
-	
-@update_ava_dir1[atomic]
-+!update_ava_dir(RDir): ava_dir(n) & ava_dir(e) & ava_dir(s)<-
-	if(RDir== cw){
-		-ava_dir(n);
-		+ava_dir(w);
-	}elif(RDir == ccw){
-		-ava_dir(s);
-		+ava_dir(w);
-	};
-	.
-@update_ava_dir2[atomic]
-+!update_ava_dir(RDir): ava_dir(e) & ava_dir(s) & ava_dir(w)<-
-	if(RDir== cw){
-		-ava_dir(e);
-		+ava_dir(n);
-	}elif(RDir == ccw){
-		-ava_dir(w);
-		+ava_dir(n);
-	};
-	.
-@update_ava_dir3[atomic]
-+!update_ava_dir(RDir): ava_dir(s) & ava_dir(w) & ava_dir(n)<-
-	if(RDir== cw){
-		-ava_dir(s);
-		+ava_dir(e);
-	}elif(RDir == ccw){
-		-ava_dir(n);
-		+ava_dir(e);
-	};
-	.
-@update_ava_dir4[atomic]
-+!update_ava_dir(RDir): ava_dir(w) & ava_dir(n) & ava_dir(e)<-
-	if(RDir== cw){
-		-ava_dir(w);
-		+ava_dir(s);
-	}elif(RDir == ccw){
-		-ava_dir(e);
-		+ava_dir(s);
-	};
-	.
-@update_ava_dir5[atomic]
-+!update_ava_dir(RDir): ava_dir(n) & ava_dir(e)<-
-	if(RDir== cw){
-		-ava_dir(n);
-		+ava_dir(s);
-	}elif(RDir == ccw){
-		-ava_dir(e);
-		+ava_dir(w);
-	};
-	.
-@update_ava_dir6[atomic]
-+!update_ava_dir(RDir): ava_dir(e) & ava_dir(s)<-
-	if(RDir== cw){
-		-ava_dir(e);
-		+ava_dir(w);
-	}elif(RDir == ccw){
-		-ava_dir(s);
-		+ava_dir(n);
-	};
-	.
-@update_ava_dir7[atomic]
-+!update_ava_dir(RDir): ava_dir(s) & ava_dir(w)<-
-	if(RDir== cw){
-		-ava_dir(s);
-		+ava_dir(n);
-	}elif(RDir == ccw){
-		-ava_dir(w);
-		+ava_dir(e);
-	};
-	.
-@update_ava_dir8[atomic]
-+!update_ava_dir(RDir): ava_dir(w) & ava_dir(n)<-
-	if(RDir== cw){
-		-ava_dir(w);
-		+ava_dir(e);
-	}elif(RDir == ccw){
-		-ava_dir(n);
-		+ava_dir(s);
-	};
-	.
-@update_ava_dir9[atomic]
-+!update_ava_dir(RDir): ava_dir(n) & ava_dir(s)<-
-	-ava_dir(n);
-	-ava_dir(s);
-	+ava_dir(e);
-	+ava_dir(w);
-	.
-@update_ava_dir10[atomic]
-+!update_ava_dir(RDir): ava_dir(e) & ava_dir(w)<-
-	-ava_dir(e);
-	-ava_dir(w);
-	+ava_dir(n);
-	+ava_dir(s);
-	.
-@update_ava_dir11[atomic]
-+!update_ava_dir(RDir): ava_dir(n)<-
-	if(RDir== cw){
-		-ava_dir(n);
-		+ava_dir(e);
-	}elif(RDir == ccw){
-		-ava_dir(n);
-		+ava_dir(w);
-	};
-	.
-@update_ava_dir12[atomic]
-+!update_ava_dir(RDir): ava_dir(e)<-
-	if(RDir== cw){
-		-ava_dir(e);
-		+ava_dir(s);
-	}elif(RDir == ccw){
-		-ava_dir(e);
-		+ava_dir(n);
-	};
-	.
-@update_ava_dir13[atomic]
-+!update_ava_dir(RDir): ava_dir(s)<-
-	if(RDir== cw){
-		-ava_dir(s);
-		+ava_dir(w);
-	}elif(RDir == ccw){
-		-ava_dir(s);
-		+ava_dir(e);
-	};
-	.
-@update_ava_dir14[atomic]
-+!update_ava_dir(RDir): ava_dir(w)<-
-	if(RDir== cw){
-		-ava_dir(w);
-		+ava_dir(n);
-	}elif(RDir == ccw){
-		-ava_dir(w);
-		+ava_dir(s);
-	};
-	.
-	
-+!find_dispensers(Dtype,X,Y) : true<-
-	!move_to(X,Y,Dtype);
-	.
++step(X) : not goal(Goal_x, Goal_y) <-
+	!move_random_5.
 
-@request_block[atomic]
-+!request_block(X,Y,Btype) : agent_location(MyN,MyX,MyY) & get_dir((X-MyX),(Y-MyY),Dir) & not block(Dir,Btype) & not location(block,Btype,X,Y)<-
-	.time(H,M,S,MS);
-	.print("[",H,":",M,":",S,":",MS,"] ","1the agent request_block X:",X,",Y=",Y,",Dir=",Dir);
-	.print("[",H,":",M,":",S,":",MS,"] ","1the agent request_block MyX:",MyX,",MyY=",MyY);
-	.print("[",H,":",M,":",S,":",MS,"] ","1the agent request_block X-MyX:",(X-MyX),",Y-MyY=",(Y-MyY));
-	.print("[",H,":",M,":",S,":",MS,"] ","agent request block:",Dir);
-	+location(block,Btype,X,Y);
-	request(Dir);
-	.
-+!request_block(X,Y,Btype) : agent_location(MyN,MyX,MyY) & get_dir((X-MyX),(Y-MyY),Dir) & not block(Dir,Btype) & location(block,Btype,X,Y)<-
-	.time(H,M,S,MS);
-	.print("[",H,":",M,":",S,":",MS,"] ","2the agent request_block X:",X,",Y=",Y,",Dir=",Dir);
-	.print("[",H,":",M,":",S,":",MS,"] ","2the agent request_block MyX:",MyX,",MyY=",MyY);
-	.print("[",H,":",M,":",S,":",MS,"] ","2the agent request_block X-MyX:",(X-MyX),",Y-MyY=",(Y-MyY));
-	!attach_block(X,Y,Btype);
-	.
+// default
++step(X) : true <- 
+	.print("No action to take.").
+	!move_random.	
 
-@attach_block[atomic] 
-+!attach_block(X,Y,Btype) : agent_location(MyN,MyX,MyY) & location(block,Btype,X,Y) & get_dir((X-MyX),(Y-MyY),Dir)<-
-	.time(H,M,S,MS); 	.print("[",H,":",M,":",S,":",MS,"] ","agent finished find_blocks Btype=",Btype,",X=",X,",Y=",Y);
++!move_random : .random(RandomNumber) & random_Direction([n, s, e, w], RandomNumber, Direction) <-
+    move(Direction).
 
-	-+agent_mode(exploration);
-	+have_block(Dir,B);
-	-ava_dir(Dir);
-	-stock(_,_,_);
-	
-	-location(block,Btype,X,Y);
-	+block(Dir,Btype);
-	attach(Dir);
-	.
++!move_random_5 : true <- 
+    .random(R); 
+    if (R < 0.25) { !move_in_direction(n, 5); }
+    elif (R < 0.5) { !move_in_direction(e, 5); }
+    elif (R < 0.75) { !move_in_direction(s, 5); }
+    else { !move_in_direction(w, 5); }.
 
-@move_to[atomic] 
-+!move_to(X,Y,Btype): agent_location(MyN,MyX,MyY) & check_dir((X-MyX),(Y-MyY),Dir)<-
-	.time(H,M,S,MS); 	
-	.print("[",H,":",M,":",S,":",MS,"] ","the agent move to the dispenser Dir=:",Dir,",MyX=",MyX,",MyY=",MyY);
-	//.print("[",H,":",M,":",S,":",MS,"] ","the agent move to the dispenser Dir=",Dir,",X=",X,",Y=",Y);
-	//.print("[",H,":",M,":",S,":",MS,"] ","the agent move to the dispenser Dir=",Dir,",(X-MyX)=",(X-MyX),",(Y-MyY)=",(Y-MyY));
-	if(Dir == null){
-		.print("agent finished moving to ",",X=",X,",Y=",Y);
-		!check_direction(X,Y,Btype);
-		//!request_block(X,Y,Btype);
-	}else{
-		if(Dir == n){
-			-+agent_location(5,MyX,MyY-1);
-		}elif(Dir == e){
-			-+agent_location(6,MyX+1,MyY);
-		}elif(Dir == s){
-			-+agent_location(7,MyX,MyY+1);
-		}elif(Dir == w){
-			-+agent_location(8,(MyX-1),MyY);
-		};
-		move(Dir);
-	};
-	.
-
-@move_on[atomic] 
-+!move_on(X,Y): agent_location(MyN,MyX,MyY) & check_dir_on(X-MyX,Y-MyY,Dir) & current_task(N, D, R,TX,TY, B)<-
-	.time(H,M,S,MS);
-	.print("[",H,":",M,":",S,":",MS,"] ","the agent move to the goal X:",X,",X=",Y);
-	.print("[",H,":",M,":",S,":",MS,"] ","the agent move to the goal MyX:",MyX,",MyY=",MyY);
-	.print("[",H,":",M,":",S,":",MS,"] ","the agent move to the goal (X-MyX):",(X-MyX),",(Y-MyY)=",(Y-MyY),",Dir=",Dir);
-	.print("[",H,":",M,":",S,":",MS,"] ","the agent move to current task N=",N,",D=", D,",R=", R,",TX=",TX,",TY=",TY,",B=", B);
-	if (Dir == null){
-		!rotate_direction(N, D, R,TX,-TY,B);
-	}else{
-		if(Dir == n){
-			-+agent_location(5,MyX,MyY-1);
-		}elif(Dir == e){
-			-+agent_location(6,MyX+1,MyY);
-		}elif(Dir == s){
-			-+agent_location(7,MyX,MyY+1);
-		}elif(Dir == w){
-			-+agent_location(8,(MyX-1),MyY);
-		};
-		move(Dir);
-	};
-	.
-
-@discover_stock[atomic] 
-+!discover_stock(Btype,X,Y) : not block(_,_)<-
-	.time(H,M,S,MS); 	.print("[",H,":",M,":",S,":",MS,"] ","the agent discover_stock1 Dtype=",Btype);
-	-+stock(Btype,X,Y);
-	-+agent_mode(find_blocks);
-	.
-@discover_stock2[atomic] 
-+!discover_stock(Btype,X,Y) : block(_,Btype)<-
-	.time(H,M,S,MS); 	.print("[",H,":",M,":",S,":",MS,"] ","the agent discover_stock2 Dtype=",Btype);
-	.
-
-@stock[atomic] 
-+!stock : not block(_,Dtype) & get_next_dispenser(Dtype,X,Y) <-
-	.time(H,M,S,MS); 	.print("[",H,":",M,":",S,":",MS,"] ","the agent stock Dtype=",Dtype);
-	-+stock(Dtype,X,Y);
-	-+agent_mode(find_blocks);
-	.
-	
-@thing1[atomic] 
-+thing(X, Y, dispenser, Details) : agent_location(MyN,MyX,MyY) & not location(dispenser,Details,(MyX+X),(MyY+Y),DSeq) & dispenser_queue(DQ)<-
-	.time(H,M,S,MS);
-	.type(DQ,T);
-	.print("[",H,":",M,":",S,":",MS,"] ","the agent sees a dispenser",",Details=",Details,",X=",X,",Y=",Y);
-	.print("[",H,":",M,":",S,":",MS,"] ","the agent sees a dispenser",",Details=",Details,",MyX=",MyX,",MyY=",MyY);
-	.print("[",H,":",M,":",S,":",MS,"] ","the agent sees a dispenser",",Details=",Details,",(MyX+X)=",(MyX+X),",(MyY+Y)=",(MyY+Y));
-	
-	if(MyX+X < 0 & MyY+Y < 0){
-		+location(dispenser,Details,(MyX+X),(MyY+Y), ((MyX+X) * -1)+((MyY+Y) * -1));
-		.concat(DQ,[((MyX+X) * -1)+((MyY+Y) * -1)],DQ2);
-		-+dispenser_queue(DQ2);
-	}elif(MyX+X > 0 & MyY+Y < 0){
-		+location(dispenser,Details,(MyX+X),(MyY+Y), (MyX+X)+((MyY+Y) * -1));
-		.concat(DQ,[(MyX+X)+((MyY+Y) * -1)],DQ2);
-		-+dispenser_queue(DQ2);
-	}elif(MyX+X < 0 & MyY+Y > 0){
-		+location(dispenser,Details,(MyX+X),(MyY+Y), ((MyX+X) * -1)+(MyY+Y));
-		.concat(DQ,[((MyX+X) * -1)+(MyY+Y)],DQ2);
-		-+dispenser_queue(DQ2);
-	}elif(MyX+X > 0 & MyY+Y > 0){
-		+location(dispenser,Details,(MyX+X),(MyY+Y), MyX+X+MyY+Y);
-		.concat(DQ,[MyX+X+MyY+Y],DQ2);
-		-+dispenser_queue(DQ2);
-	};
-	
-	!discover_stock(Details,(MyX+X),(MyY+Y));
-	.
-// @thing2[atomic] 
-// +thing(X, Y, block, Details) : agent_location(MyN,MyX,MyY) & not location(block,Details,(MyX+X),(MyY+Y)) & get_dir(X,Y,Dir) & not block(Dir,Details)<-
-// 	.time(H,M,S,MS);
-// 	.print("[",H,":",M,":",S,":",MS,"] ","the agent sees a ",block,",Details=",Details,",X=",Y,",Y=",Y);
-// 	.print("[",H,":",M,":",S,":",MS,"] ","the agent sees a ",block,",Details=",Details,",MyX=",MyX,",MyY=",MyY);
-// 	.print("[",H,":",M,":",S,":",MS,"] ","the agent sees a ",block,",Details=",Details,",(MyX+X)=",(MyX+X),",(MyY+Y)=",(MyY+Y));
-// 	+location(block,Details,(MyX+X),(MyY+Y));
-// 	.
-
-// agent see a goal
-//+goal(X,Y): agent_location(MyN,MyX,MyY)  & count_location(goal,N) & (N == 0)<- 
-//	+location(goal,_,(MyX+X),(MyY+Y));
-//	.time(H,M,S,MS); 	.print("[",H,":",M,":",S,":",MS,"] ","the agent sees a goal:",(MyX+X),",",(MyY+Y));
-//	.
-@goal1[atomic] 
-+goal(X,Y): agent_location(MyN,MyX,MyY) & not location(goal,_,(MyX+X),(MyY+Y),_) & goal_queue(GQ)<- 
-	.time(H,M,S,MS);
-	.type(GQ,T);
-	.print("[",H,":",M,":",S,":",MS,"] ","the agent sees a goal:","X=",X,",Y=",Y,",GQ=",GQ,",T=",T);
-	.print("[",H,":",M,":",S,":",MS,"] ","the agent sees a goal:",",MyX=",MyX,",MyY=",MyY);
-	.print("[",H,":",M,":",S,":",MS,"] ","the agent sees a goal:",",(MyX+X)=",(MyX+X),",(MyY+Y)=",(MyY+Y));
-	if(MyX+X < 0 & MyY+Y < 0){
-		+location(goal,_,(MyX+X),(MyY+Y), ((MyX+X) * -1)+((MyY+Y) * -1));
-		.concat(GQ,[((MyX+X) * -1)+((MyY+Y) * -1)],GQ2);
-		-+goal_queue(GQ2);
-	}elif(MyX+X > 0 & MyY+Y < 0){
-		+location(goal,_,(MyX+X),(MyY+Y), (MyX+X)+((MyY+Y) * -1));
-		.concat(GQ,[(MyX+X)+((MyY+Y) * -1)],GQ2);
-		-+goal_queue(GQ2);
-	}elif(MyX+X < 0 & MyY+Y > 0){
-		+location(goal,_,(MyX+X),(MyY+Y), ((MyX+X) * -1)+(MyY+Y));
-		.concat(GQ,[((MyX+X) * -1)+(MyY+Y)],GQ2);
-		-+goal_queue(GQ2);
-	}elif(MyX+X > 0 & MyY+Y > 0){
-		+location(goal,_,(MyX+X),(MyY+Y), MyX+X+MyY+Y);
-		.concat(GQ,[MyX+X+MyY+Y],GQ2);
-		-+goal_queue(GQ2);
-	};
-	.
-@goal2[atomic] 
-+location(goal,_,X,Y): task_base(N, D, R,TX,TY,B) & block(Bdir,B) & not current_task(_,_,_,_,_,_) & not conflict_task(N)<- 
-	.time(H,M,S,MS); 	
-	.print("[",H,":",M,":",S,":",MS,"] ","the agent sees a goal1:",X,",",Y);
-	
-	.broadcast(tell,conflict_task(N));
-	-task_base(N, D, R,TX,TY,B);
-	+current_task(N, D, R,TX,TY, B);
-	-+agent_mode(find_goal);
-	.print("[",H,":",M,":",S,":",MS,"] ","1--------------------------- agent start task=",N);
-	.
-	
-@have_block[atomic] 
-+have_block(Dir,B) : location(goal,_,GoalX,GoalY,_) & task_base(N, D, R,TX,TY,B) & block(Dir,B) & not current_task(_,_,_,_,_,_) & not conflict_task(N)<-
-	
-	.broadcast(tell,conflict_task(N));
-	-task_base(N, D, R,TX,TY,B);
-	+current_task(N, D, R,TX,TY, B);
-	-+agent_mode(find_goal);
-	.time(H,M,S,MS);
-	.print("[",H,":",M,":",S,":",MS,"] ","3--------------------------- agent start task=",N);
-	-have_block(Dir,B);
-	.
-
-+task(N, D, R, Req) : (.length(Req) == 1) & not task_base(N,_,_,_,_,_)<-
-	.member(req(TX,TY,B),Req);
-	.print("agent add task_base--------",",B=", B,",X=", TX,",Y=",TY,",N=",N);
-	+task_base(N, D, R,TX,TY,B);
-	.
-@task_base[atomic] 
-+task_base(N, D, R,TX,TY,B) : location(goal,_,GoalX,GoalY,_) & block(Dir,B) & not current_task(_,_,_,_,_,_) & not conflict_task(N)<-
-	.time(H,M,S,MS); 	.print("[",H,":",M,":",S,":",MS,"] ","the agent receive a new task ",N,",D=", D,",R=", R,",B=", B,",X=", TX,",Y=",TY);
-	.broadcast(tell,conflict_task(N));
-	-task_base(N, D, R,TX,TY,B);
-	+current_task(N, D, R,TX,TY, B);
-	-+agent_mode(find_goal);
-	.print("[",H,":",M,":",S,":",MS,"] ","4--------------------------- agent start task=",N);
-	.
-	
-
-
-+conflict_task(N)[source(Ag)]  :  Ag \== self <- 
-	+conflict_task(N);
-	.time(H,M,S,MS); 	.print("[",H,":",M,":",S,":",MS,"] ","Received tell conflict task name ",N," from ", Ag);
-	.
-
-// agent see a obstacle
-//+obstacle(X,Y): agent_location(MyN,MyX,MyY) & count_location(obstacle,N) & (N == 0) <- 
-//	+location(obstacle,_,(MyX+X),(MyY+Y));
-//	.time(H,M,S,MS); 	.print("[",H,":",M,":",S,":",MS,"] ","the agent sees an obstacle :",(MyX+X),",",(MyY+Y));
-//	.
-//+obstacle(X,Y): agent_location(MyN,MyX,MyY) & location(obstacle,_,ObsX,ObsY) <- 
-//	if(not (ObsX == (MyX+X)) & not (ObsY == (MyY+Y))){
-//		+location(obstacle,_,(MyX+X),(MyY+Y));
-//		.time(H,M,S,MS); 	.print("[",H,":",M,":",S,":",MS,"] ","the agent sees an obstacle :");
-//	};
-//	.
-+lastAction(Action) : lastActionResult(Result)<-
-	if(Action == attach & Result == failed){
-		!attach_failed;
-	}elif(Action == attach & Result == failed_target){
-		!attach_failed_target;
-	}elif(Action == request & Result == failed_blocked){
-		!request_failed_blocked;
-	};
-	.
-+lastAction(Action) : lastActionResult(Result) & lastActionParams(Params)<-
-	if(Action == rotate & Result == failed){
-		!rotate_failed(Params)
-	}elif(Action == attach & Result == failed){
-		!attach_failed;
-	}elif(Action == attach & Result == failed_target){
-		!attach_failed_target;
-	}elif(Action == request & Result == failed_blocked){
-		!request_failed_blocked;
-	}elif(Action == submit & Result == failed){
-	  !submit_failed(Params);
-	}elif(Action == submit & Result == success){
-	  !submit_success(Params);
-	}elif(Action == move & Result == failed_forbidden){
-		!move_exploration_failed_forbidden(Params);
-	}elif(Action == move & Result == failed_path){
-		!move_failed_path(Params);
-	};
-	.
-+!move_failed_path(Params): agent_mode(exploration) & agent_location(MyN,MyX,MyY) & .random(R1) & .random(R2) & .random(R3) & get_random_pointX(R1,X1) & get_random_pointY(R2,R3,X1,X,Y) <-
-	.member(V,Params);
-	.time(H,M,S,MS); 	.print("[",H,":",M,":",S,":",MS,"] ","------------lastaction failed:",V);
-	if(V == n){
-		-+agent_location(MyN,MyX,MyY+1);
-	}elif(V == e){
-		-+agent_location(MyN,MyX-1,MyY);
-	}elif(V == s){
-		-+agent_location(MyN,MyX,MyY-1);
-	}elif(V == w){
-		-+agent_location(MyN,MyX+1,MyY);
-	};
-	-+random_point(X+MyX,Y+MyY);
-	.
-+!move_failed_path(Params) : agent_mode(find_blocks) & agent_location(MyN,MyX,MyY) & location(diispenser,Dtype,X,Y,DSeq) & stock(_,X2,Y2) & not X == X2 & not Y == Y2<-
-	.member(V,Params);
-	.time(H,M,S,MS); 	.print("[",H,":",M,":",S,":",MS,"] ","---find_blocks---------lastaction failed:",V);
-
-	if(V == n){
-		-+agent_location(MyN,MyX,MyY+1);
-	}elif(V == e){
-		-+agent_location(MyN,MyX-1,MyY);
-	}elif(V == s){
-		-+agent_location(MyN,MyX,MyY-1);
-	}elif(V == w){
-		-+agent_location(MyN,MyX+1,MyY);
-	};
-	!discover_stock(Dtype,X,Y);
-	.
-+!move_failed_path(Params): agent_mode(find_goal) & agent_location(MyN,MyX,MyY) & location(goal,_,Goalx,GoalY,GSeq)<-
-	.member(V,Params);
-	.time(H,M,S,MS); 	.print("[",H,":",M,":",S,":",MS,"] ","---find_goal---------lastaction failed:",V);
-
-	if(V == n){
-		-+agent_location(MyN,MyX,MyY+1);
-	}elif(V == e){
-		-+agent_location(MyN,MyX-1,MyY);
-	}elif(V == s){
-		-+agent_location(MyN,MyX,MyY-1);
-	}elif(V == w){
-		-+agent_location(MyN,MyX+1,MyY);
-	};
-	-location(goal,_,Goalx,GoalY,GSeq);
-	-location(goal,task,Goalx,GoalY,GSeq);
-	.
-+!move_exploration_failed_forbidden(Params): agent_mode(exploration) & agent_location(MyN,MyX,MyY) & .random(R1) & .random(R2) & .random(R3) & get_random_pointX(R1,X1) & get_random_pointY(R2,R3,X1,X,Y)<-
-	.member(V,Params);
-	.time(H,M,S,MS); 	.print("[",H,":",M,":",S,":",MS,"] ","agent reached the boundary:",V);
-
-	if(V == n){
-		+boundary(n,MyY);
-		-+agent_location(MyN,MyX,MyY+1);
-	}elif(V == e){
-		+boundary(e,MyX);
-		-+agent_location(MyN,MyX-1,MyY);
-	}elif(V == s){
-		+boundary(s,MyY);
-		-+agent_location(MyN,MyX,MyY-1);
-	}elif(V == w){
-		+boundary(s,MyX);
-		-+agent_location(MyN,MyX+1,MyY);
-	};
-	-+random_point(X+MyX,Y+MyY);
-	.
-+!submit_success(Params): true <-
-	.member(N,Params);
-	.time(H,M,S,MS); 	.print("[",H,":",M,":",S,":",MS,"] ","agent submit task success--------------------N=",N);
-
-	-current_task(_,_,_,_,_,_);
-	-+agent_mode(exploration);
-	!stock;
-	.
-	
-+!submit_failed(Params): .member(N,Params) & current_task(N, D, R,TX,TY, B) & get_dir(TX,TY,Dir) & block(Dir,B)<-
-	.time(H,M,S,MS); 	.print("[",H,":",M,":",S,":",MS,"] ","agent submit task failed--------------------N=",N);
-	-current_task(N, D, R,TX,TY, B);
-	+block(Dir,B);
-	-ava_dir(Dir);
-	-+agent_mode(exploration);
-	!stock;
-	.
-+!request_failed_blocked: true<-
-	.time(H,M,S,MS); 	.print("[",H,":",M,":",S,":",MS,"] ","agent request failed-------failed_blocked-------------");
-	-+agent_mode(exploration);
-	-stock(_,_,_);
-	-current_task(_,_,_,_,_,_);
-	.
-+!request_failed_target: true <-
-	.time(H,M,S,MS); 	.print("[",H,":",M,":",S,":",MS,"] ","agent request failed--------failed_target------------");
-	-+agent_mode(exploration);
-	-stock(_,_,_);
-	-current_task(_,_,_,_,_,_);
-	.
-+!attach_failed_target:true<-
-	.time(H,M,S,MS); 	.print("[",H,":",M,":",S,":",MS,"] ","agent attach failed-------failed_target-------------");
-	-+agent_mode(exploration);
-	-stock(_,_,_);
-	-current_task(_,_,_,_,_,_);
-	.
-+!attach_failed: true<-
-	.time(H,M,S,MS); 	.print("[",H,":",M,":",S,":",MS,"] ","agent attach failed--------failed------------");
-	-+agent_mode(exploration);
-	-stock(_,_,_);
-	-current_task(_,_,_,_,_,_);
-	.
-+!rotate_failed(Params): true<-
-	.member(Rdir,Params);
-	.time(H,M,S,MS); 	.print("[",H,":",M,":",S,":",MS,"] ","agent rotate failed--------failed------------");
-
-	if(Rdir == cw){
-		!update_block_dir(ccw);
-	}elif(Rdir == ccw){
-		!update_block_dir(cw);
-	};
-	.
-
-	
-+agent_location(N,X,Y) : true <-
-	.time(H,M,S,MS); 	.print("[",H,":",M,":",S,":",MS,"] ","add self location inspect :",N,",",X,",",Y);
-	//true;
-	.
++!move_in_direction(Direction, Steps) : Steps > 0 & not block(Direction) <- 
+    move(Direction); 
+    !move_in_direction(Direction, Steps - 1).
++!move_in_direction(Direction, Steps) : Steps > 0 & block(Direction) <- 
+    .print("Blocked in direction ", Direction, ", stopping.").
++!move_in_direction(Direction, 0) <- 
+    .print("Finished moving in direction ", Direction).
