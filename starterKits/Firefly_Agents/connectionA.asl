@@ -132,7 +132,7 @@ name2id(Name, Id) :-
 	request(w).
 
 
-// move to dispenser
+// Move to Dispenser
 +step(X) : thing(0, Dispenser_y, dispenser, D) <-
 	if(Dispenser_y < 0){
         move(n);
@@ -168,7 +168,7 @@ name2id(Name, Id) :-
 +step(X) : not goal(Goal_x, Goal_y) <-
 	!move_random_5.
 
-// default
+// Default function
 +step(X) : true <- 
 	.print("No action to take.").
 	!move_random.	
